@@ -3,16 +3,12 @@ name: 船司查询 CMA/MSC
 on:
   workflow_dispatch:
     inputs:
-      cma_bl:
-        description: 'CMA B/L Number'
-        required: false
+      bl_number:
+        description: 'B/L Number'
+        required: true
         default: 'ABQ0117757'
-      msc_bl:
-        description: 'MSC B/L Number'
-        required: false
-        default: 'MEDUH7002122'
       carrier:
-        description: '查询哪个船司'
+        description: '船司'
         required: true
         type: choice
         options:
@@ -21,40 +17,46 @@ on:
           - BOTH
 
 jobs:
-  query:
+  cma:
+    if: ${{ github.event.inputs.carrier == 'CMA' || github.event.inputs.carrier == 'BOTH' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
+    timeout-minutes: 8
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install Playwright
-        run: |
-          pip install playwright
-          python -m playwright install chromium --with-deps
-
-      - name: Query CMA
-        if: ${{ github.event.inputs.carrier == 'CMA' || github.event.inputs.carrier == 'BOTH' }}
-        run: |
-          python query_cma_msc_ci.py CMA "${{ github.event.inputs.cma_bl }}"
-
-      - name: Query MSC
-        if: ${{ github.event.inputs.carrier == 'MSC' || github.event.inputs.carrier == 'BOTH' }}
-        run: |
-          python query_cma_msc_ci.py MSC "${{ github.event.inputs.msc_bl }}"
-
-      - name: Upload Results
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install playwright && python -m playwright install chromium --with-deps
+      - run: python query_cma_msc_ci.py CMA "${{ github.event.inputs.bl_number }}"
+      - name: Dump Results
         if: always()
-        uses: actions/upload-artifact@v4
+        run: |
+          echo "=== CMA RESULT ==="
+          cat evidence/cma_result.txt 2>/dev/null || echo "(no result file)"
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: query-results
-          path: |
-            evidence/*.png
-            evidence/*.txt
+          name: cma-results
+          path: evidence/
+          retention-days: 7
+
+  msc:
+    if: ${{ github.event.inputs.carrier == 'MSC' || github.event.inputs.carrier == 'BOTH' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install playwright && python -m playwright install chromium --with-deps
+      - run: python query_cma_msc_ci.py MSC "${{ github.event.inputs.bl_number }}"
+      - name: Dump Results
+        if: always()
+        run: |
+          echo "=== MSC RESULT ==="
+          cat evidence/msc_result.txt 2>/dev/null || echo "(no result file)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: msc-results
+          path: evidence/
           retention-days: 7
