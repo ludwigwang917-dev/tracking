@@ -1,4 +1,4 @@
-name: CMA/MSC 查询 (patchright)
+name: CMA/MSC 查询 (patchright v2)
 
 on:
   workflow_dispatch:
@@ -21,22 +21,24 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
 
-      - name: Install patchright
-        run: |
+      - run: |
           pip install patchright
+          npx playwright install-deps chromium 2>/dev/null || true
           python -m patchright install chromium --with-deps
 
-      - name: Query
-        run: |
+      - run: |
           python query_patchright_ci.py "${{ github.event.inputs.carrier }}" "${{ github.event.inputs.bl_number }}"
       
-      - name: Show Results
+      - name: Dump Results
         if: always()
         run: |
-          echo "=== RESULT ==="
-          cat evidence/*_result.txt 2>/dev/null || echo "(no results)"
-          echo "=== STRUCTURE ==="
-          cat evidence/*_structure.json 2>/dev/null || echo "(no structure)"
+          for f in evidence/*_result.txt; do
+            [ -f "$f" ] && echo "=== $f ===" && cat "$f" || true
+          done
+          for f in evidence/*_structure.json; do
+            [ -f "$f" ] && echo "=== $f ===" && cat "$f" || true
+          done
+          echo "=== LS ===" && ls -la evidence/ 2>/dev/null || echo "(no evidence dir)"
 
       - uses: actions/upload-artifact@v4
         if: always()
