@@ -1,0 +1,10 @@
+# Dependencies
+*.xlsx
+*.docx
+*.png
+*.txt
+*.html
+data/
+__pycache__/
+*.pyc
+.env
