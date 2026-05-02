@@ -1,0 +1,46 @@
+name: CMA/MSC 查询 (patchright)
+
+on:
+  workflow_dispatch:
+    inputs:
+      carrier:
+        description: '船司'
+        required: true
+        type: choice
+        options: [CMA, MSC, BOTH]
+      bl_number:
+        description: 'B/L 号'
+        required: true
+
+jobs:
+  query:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+
+      - name: Install patchright
+        run: |
+          pip install patchright
+          python -m patchright install chromium --with-deps
+
+      - name: Query
+        run: |
+          python query_patchright_ci.py "${{ github.event.inputs.carrier }}" "${{ github.event.inputs.bl_number }}"
+      
+      - name: Show Results
+        if: always()
+        run: |
+          echo "=== RESULT ==="
+          cat evidence/*_result.txt 2>/dev/null || echo "(no results)"
+          echo "=== STRUCTURE ==="
+          cat evidence/*_structure.json 2>/dev/null || echo "(no structure)"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: results
+          path: evidence/
+          retention-days: 3
